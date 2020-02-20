@@ -3,15 +3,19 @@ package com.rodarte.springbootwebfluxapirest.controllers;
 import com.rodarte.springbootwebfluxapirest.models.documents.Producto;
 import com.rodarte.springbootwebfluxapirest.models.services.ProductoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.File;
 import java.net.URI;
 import java.util.Date;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/productos")
@@ -20,10 +24,51 @@ public class ProductoController {
     @Autowired
     private ProductoService productoService;
 
+    @Value("${config.uploads.path}")
+    private String path;
+
 //    @GetMapping
 //    public Flux<Producto> listar() {
 //        return this.productoService.findAll();
 //    }
+
+    @PostMapping("/upload/{id}")
+    public Mono<ResponseEntity<Producto>> upload(@PathVariable String id, @RequestPart(name = "file") FilePart filePart) {
+
+        return this
+                .productoService
+                .findById(id)
+                .flatMap(
+                    producto -> {
+
+                        producto.setFoto(
+                            UUID.randomUUID().toString() +
+                            "-" +
+                            filePart.filename().replace(" ", "") +
+                            filePart.filename().replace(":", "") +
+                            filePart.filename().replace("\\", "")
+                        );
+
+                        return filePart
+                                .transferTo(new File(this.path + producto.getFoto()))
+                                .then(this.productoService.save(producto));
+
+                    }
+                )
+                .map(
+                    producto ->
+                        ResponseEntity
+                            .ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(producto)
+                )
+                .defaultIfEmpty(
+                    ResponseEntity
+                        .notFound()
+                        .build()
+                );
+
+    }
 
     @GetMapping
     public Mono<ResponseEntity<Flux<Producto>>> listar() {
