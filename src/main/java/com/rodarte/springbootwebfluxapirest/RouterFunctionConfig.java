@@ -34,6 +34,11 @@ public class RouterFunctionConfig {
                     RequestPredicates
                         .PUT("/api/v2/productos/{id}"),
                     productoHandler::editar
+                )
+                .andRoute(
+                    RequestPredicates
+                        .DELETE("/api/v2/productos/{id}"),
+                    productoHandler::eliminar
                 );
     }
 

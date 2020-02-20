@@ -96,4 +96,22 @@ public class ProductoHandler {
 
     }
 
+    public Mono<ServerResponse> eliminar(ServerRequest serverRequest) {
+
+        String id = serverRequest.pathVariable("id");
+
+        return this
+                .productoService
+                .findById(id)
+                .flatMap(
+                    producto ->
+                        this
+                            .productoService
+                            .delete(producto)
+                            .then(ServerResponse.noContent().build())
+                )
+                .switchIfEmpty(ServerResponse.notFound().build());
+
+    }
+
 }
