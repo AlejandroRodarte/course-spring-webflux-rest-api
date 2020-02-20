@@ -32,6 +32,34 @@ public class ProductoController {
 //        return this.productoService.findAll();
 //    }
 
+    @PostMapping("/v2")
+    public Mono<ResponseEntity<Producto>> crearConFoto(Producto producto, @RequestPart(name = "file") FilePart filePart) {
+
+        if (producto.getCreatedAt() == null) {
+            producto.setCreatedAt(new Date());
+        }
+
+        producto.setFoto(
+            UUID.randomUUID().toString() +
+            "-" +
+            filePart.filename().replace(" ", "") +
+            filePart.filename().replace(":", "") +
+            filePart.filename().replace("\\", "")
+        );
+
+        return filePart
+                .transferTo(new File(this.path + producto.getFoto()))
+                .then(this.productoService.save(producto))
+                .map(
+                    productoSalvado ->
+                        ResponseEntity
+                            .ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(productoSalvado)
+                );
+
+    }
+
     @PostMapping("/upload/{id}")
     public Mono<ResponseEntity<Producto>> upload(@PathVariable String id, @RequestPart(name = "file") FilePart filePart) {
 
