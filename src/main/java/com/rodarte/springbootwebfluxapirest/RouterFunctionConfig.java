@@ -3,6 +3,7 @@ package com.rodarte.springbootwebfluxapirest;
 import com.rodarte.springbootwebfluxapirest.handlers.ProductoHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.server.RequestPredicates;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
@@ -13,12 +14,19 @@ public class RouterFunctionConfig {
 
     @Bean
     public RouterFunction<ServerResponse> routes(ProductoHandler productoHandler) {
-        return RouterFunctions.route(
-            RequestPredicates
-                .GET("/api/v2/productos")
-                .or(RequestPredicates.GET("/api/v3/productos")),
-            productoHandler::listar
-        );
+        return RouterFunctions
+                .route(
+                    RequestPredicates
+                        .GET("/api/v2/productos")
+                        .or(RequestPredicates.GET("/api/v3/productos")),
+                    productoHandler::listar
+                )
+                .andRoute(
+                    RequestPredicates
+                        .GET("/api/v2/productos/{id}")
+                        .and(RequestPredicates.contentType(MediaType.APPLICATION_JSON)),
+                    productoHandler::ver
+                );
     }
 
 }
