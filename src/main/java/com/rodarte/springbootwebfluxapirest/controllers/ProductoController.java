@@ -3,6 +3,7 @@ package com.rodarte.springbootwebfluxapirest.controllers;
 import com.rodarte.springbootwebfluxapirest.models.documents.Producto;
 import com.rodarte.springbootwebfluxapirest.models.services.ProductoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -104,6 +105,22 @@ public class ProductoController {
                         .notFound()
                         .build()
                 );
+
+    }
+
+    @DeleteMapping("/{id}")
+    public Mono<ResponseEntity<Void>> eliminar(@PathVariable String id) {
+
+        return this
+                .productoService
+                .findById(id)
+                .flatMap(
+                    producto ->
+                        this.productoService
+                            .delete(producto)
+                            .thenReturn(new ResponseEntity<Void>(HttpStatus.NO_CONTENT))
+                )
+                .defaultIfEmpty(new ResponseEntity<Void>(HttpStatus.NOT_FOUND));
 
     }
 
