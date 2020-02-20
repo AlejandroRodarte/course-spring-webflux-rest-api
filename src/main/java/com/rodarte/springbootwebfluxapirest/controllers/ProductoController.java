@@ -75,4 +75,36 @@ public class ProductoController {
 
     }
 
+    @PutMapping("/{id}")
+    public Mono<ResponseEntity<Producto>> editar(@RequestBody Producto producto, @PathVariable String id) {
+
+        return this
+                .productoService
+                .findById(id)
+                .flatMap(
+                    nextProducto -> {
+
+                       nextProducto.setNombre(producto.getNombre());
+                       nextProducto.setPrecio(producto.getPrecio());
+                       nextProducto.setCategoria(producto.getCategoria());
+
+                       return this.productoService.save(nextProducto);
+
+                    }
+                )
+                .map(
+                    productoActualizado ->
+                        ResponseEntity
+                            .created(URI.create("/api/productos/".concat(productoActualizado.getId())))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(productoActualizado)
+                )
+                .defaultIfEmpty(
+                    ResponseEntity
+                        .notFound()
+                        .build()
+                );
+
+    }
+
 }
