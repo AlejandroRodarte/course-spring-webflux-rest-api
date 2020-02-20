@@ -3,21 +3,71 @@ package com.rodarte.springbootwebfluxapirest.handlers;
 import com.rodarte.springbootwebfluxapirest.models.documents.Producto;
 import com.rodarte.springbootwebfluxapirest.models.services.ProductoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
+import java.io.File;
 import java.net.URI;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class ProductoHandler {
 
     @Autowired
     private ProductoService productoService;
+
+    @Value("${config.uploads.path}")
+    private String path;
+
+    public Mono<ServerResponse> upload(ServerRequest serverRequest) {
+
+        String id = serverRequest.pathVariable("id");
+
+        return serverRequest
+                .multipartData()
+                .map(multiValueMap -> multiValueMap.toSingleValueMap().get("file"))
+                .cast(FilePart.class)
+                .flatMap(
+                    filePart ->
+                        this
+                            .productoService
+                            .findById(id)
+                            .flatMap(
+                                producto -> {
+
+                                    producto.setFoto(
+                                        UUID.randomUUID().toString() +
+                                        "-" +
+                                        filePart
+                                            .filename()
+                                            .replace(" ", "-")
+                                            .replace(":", "")
+                                            .replace("\\", "")
+                                    );
+
+                                    return filePart
+                                            .transferTo(new File(this.path + producto.getFoto()))
+                                            .then(this.productoService.save(producto));
+
+                                }
+                            )
+                )
+                .flatMap(
+                    producto -> ServerResponse
+                                    .created(URI.create("/api/v2/productos/" + producto.getId()))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .body(BodyInserters.fromValue(producto))
+                )
+                .switchIfEmpty(ServerResponse.notFound().build());
+
+    }
 
     public Mono<ServerResponse> listar(ServerRequest serverRequest) {
 

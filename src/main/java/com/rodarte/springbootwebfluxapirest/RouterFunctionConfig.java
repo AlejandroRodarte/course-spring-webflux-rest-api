@@ -39,6 +39,11 @@ public class RouterFunctionConfig {
                     RequestPredicates
                         .DELETE("/api/v2/productos/{id}"),
                     productoHandler::eliminar
+                )
+                .andRoute(
+                    RequestPredicates
+                        .POST("/api/v2/productos/upload/{id}"),
+                    productoHandler::upload
                 );
     }
 
