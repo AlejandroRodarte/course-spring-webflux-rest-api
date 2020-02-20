@@ -9,12 +9,16 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.support.WebExchangeBindException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.validation.Valid;
 import java.io.File;
 import java.net.URI;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -130,21 +134,57 @@ public class ProductoController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<Producto>> crear(@RequestBody Producto producto) {
+    public Mono<ResponseEntity<Map<String, Object>>> crear(@Valid @RequestBody Mono<Producto> monoProducto) {
 
-        if (producto.getCreatedAt() == null) {
-            producto.setCreatedAt(new Date());
-        }
+        Map<String, Object> respuesta = new HashMap<>();
 
-        return this
-                .productoService
-                .save(producto)
-                .map(
-                    nuevoProducto ->
-                        ResponseEntity
-                            .created(URI.create("/api/productos/".concat(nuevoProducto.getId())))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .body(nuevoProducto)
+        return monoProducto
+                .flatMap(
+                    producto -> {
+
+                        if (producto.getCreatedAt() == null) {
+                            producto.setCreatedAt(new Date());
+                        }
+
+                        return this
+                                .productoService
+                                .save(producto)
+                                .map(
+                                    nuevoProducto -> {
+
+                                        respuesta.put("producto", nuevoProducto);
+                                        respuesta.put("mensaje", "Producto creado con exito");
+                                        respuesta.put("timestamp", new Date());
+
+                                        return ResponseEntity
+                                                .created(URI.create("/api/productos/".concat(nuevoProducto.getId())))
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .body(respuesta);
+
+                                    }
+                                );
+
+                    }
+                )
+                .onErrorResume(
+                    t -> Mono
+                            .just(t)
+                            .cast(WebExchangeBindException.class)
+                            .map(WebExchangeBindException::getFieldErrors)
+                            .flatMapMany(Flux::fromIterable)
+                            .map(fieldError -> "El campo " + fieldError.getField() + " " + fieldError.getDefaultMessage())
+                            .collectList()
+                            .map(list -> {
+
+                                respuesta.put("errores", list);
+                                respuesta.put("timestamp", new Date());
+                                respuesta.put("status", HttpStatus.BAD_REQUEST.value());
+
+                                return ResponseEntity
+                                        .badRequest()
+                                        .body(respuesta);
+
+                            })
                 );
 
     }
