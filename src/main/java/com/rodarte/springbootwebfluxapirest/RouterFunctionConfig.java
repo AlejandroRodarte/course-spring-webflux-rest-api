@@ -29,6 +29,11 @@ public class RouterFunctionConfig {
                     RequestPredicates
                         .POST("/api/v2/productos"),
                     productoHandler::crear
+                )
+                .andRoute(
+                    RequestPredicates
+                        .PUT("/api/v2/productos/{id}"),
+                    productoHandler::editar
                 );
     }
 
