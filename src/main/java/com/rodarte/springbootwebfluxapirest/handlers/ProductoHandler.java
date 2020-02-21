@@ -1,11 +1,14 @@
 package com.rodarte.springbootwebfluxapirest.handlers;
 
+import com.rodarte.springbootwebfluxapirest.models.documents.Categoria;
 import com.rodarte.springbootwebfluxapirest.models.documents.Producto;
 import com.rodarte.springbootwebfluxapirest.models.services.ProductoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.http.codec.multipart.FormFieldPart;
+import org.springframework.http.codec.multipart.Part;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.ServerRequest;
@@ -15,6 +18,7 @@ import reactor.core.publisher.Mono;
 import java.io.File;
 import java.net.URI;
 import java.util.Date;
+import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -66,6 +70,68 @@ public class ProductoHandler {
                                     .body(BodyInserters.fromValue(producto))
                 )
                 .switchIfEmpty(ServerResponse.notFound().build());
+
+    }
+
+    public Mono<ServerResponse> crearConFoto(ServerRequest serverRequest) {
+
+        Mono<Producto> nuevoProducto =
+            serverRequest
+                .multipartData()
+                .map(
+                    multiValueMap -> {
+
+                        Map<String, Part> map = multiValueMap.toSingleValueMap();
+
+                        FormFieldPart nombre = (FormFieldPart)  map.get("nombre");
+                        FormFieldPart precio = (FormFieldPart) map.get("precio");
+                        FormFieldPart categoriaId = (FormFieldPart) map.get("categoria.id");
+                        FormFieldPart categoriaNombre = (FormFieldPart) map.get("categoria.nombre");
+
+                        Categoria categoria = new Categoria(categoriaNombre.value());
+                        categoria.setId(categoriaId.value());
+
+                        return new Producto(nombre.value(), Double.parseDouble(precio.value()), categoria);
+
+                    }
+                );
+
+        return serverRequest
+                .multipartData()
+                .map(multiValueMap -> multiValueMap.toSingleValueMap().get("file"))
+                .cast(FilePart.class)
+                .flatMap(
+                    filePart ->
+                        nuevoProducto
+                            .flatMap(
+                                producto -> {
+
+                                    producto.setFoto(
+                                        UUID.randomUUID().toString() +
+                                            "-" +
+                                            filePart
+                                            .filename()
+                                            .replace(" ", "-")
+                                            .replace(":", "")
+                                            .replace("\\", "")
+                                    );
+
+                                    producto.setCreatedAt(new Date());
+
+                                    return filePart
+                                            .transferTo(new File(this.path + producto.getFoto()))
+                                            .then(this.productoService.save(producto));
+
+                                }
+                            )
+                )
+                .flatMap(
+                    producto ->
+                        ServerResponse
+                            .created(URI.create("/api/v2/productos/" + producto.getId()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(BodyInserters.fromValue(producto))
+                );
 
     }
 

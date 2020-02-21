@@ -44,6 +44,11 @@ public class RouterFunctionConfig {
                     RequestPredicates
                         .POST("/api/v2/productos/upload/{id}"),
                     productoHandler::upload
+                )
+                .andRoute(
+                    RequestPredicates
+                            .POST("/api/v2/productos/v2"),
+                    productoHandler::crearConFoto
                 );
     }
 
