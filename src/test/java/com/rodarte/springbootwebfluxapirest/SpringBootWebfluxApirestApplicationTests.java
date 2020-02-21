@@ -1,17 +1,21 @@
 package com.rodarte.springbootwebfluxapirest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rodarte.springbootwebfluxapirest.models.documents.Categoria;
 import com.rodarte.springbootwebfluxapirest.models.documents.Producto;
 import com.rodarte.springbootwebfluxapirest.models.services.ProductoService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -23,12 +27,15 @@ class SpringBootWebfluxApirestApplicationTests {
 	@Autowired
 	private ProductoService productoService;
 
+	@Value("${config.base.endpoint}")
+	private String url;
+
 	@Test
 	void listarTest() {
 
 		webTestClient
 			.get()
-			.uri("/api/v2/productos")
+			.uri(this.url)
 			.accept(MediaType.APPLICATION_JSON)
 			.exchange()
 			.expectStatus()
@@ -55,7 +62,7 @@ class SpringBootWebfluxApirestApplicationTests {
 
 		webTestClient
 			.get()
-			.uri("/api/v2/productos/{id}", Collections.singletonMap("id", producto.getId()))
+			.uri(this.url + "/{id}", Collections.singletonMap("id", producto.getId()))
 			.accept(MediaType.APPLICATION_JSON)
 			.exchange()
 			.expectStatus()
@@ -89,7 +96,7 @@ class SpringBootWebfluxApirestApplicationTests {
 
 		webTestClient
 			.post()
-			.uri("/api/v2/productos")
+			.uri(this.url)
 			.contentType(MediaType.APPLICATION_JSON)
 			.accept(MediaType.APPLICATION_JSON)
 			.body(Mono.just(producto), Producto.class)
@@ -98,10 +105,11 @@ class SpringBootWebfluxApirestApplicationTests {
 			.isCreated()
 			.expectHeader()
 			.contentType(MediaType.APPLICATION_JSON)
-			.expectBody(Producto.class)
+			.expectBody(new ParameterizedTypeReference<LinkedHashMap<String, Object>>() {})
 			.consumeWith(response -> {
 
-				Producto responseProducto = response.getResponseBody();
+				Object o = response.getResponseBody().get("producto");
+				Producto responseProducto = new ObjectMapper().convertValue(o, Producto.class);
 
 				Assertions.assertThat(responseProducto.getId()).isNotEmpty();
 				Assertions.assertThat(responseProducto.getNombre()).isEqualTo("Mesa comedor");
@@ -109,11 +117,11 @@ class SpringBootWebfluxApirestApplicationTests {
 
 			});
 			/* .expectBody()
-			.jsonPath("$.id")
+			.jsonPath("$.producto.id")
 			.isNotEmpty()
-			.jsonPath("$.nombre")
+			.jsonPath("$.producto.nombre")
 			.isEqualTo("Mesa comedor")
-			.jsonPath("$.categoria.nombre")
+			.jsonPath("$.producto.categoria.nombre")
 			.isEqualTo("Muebles"); */
 
 	}
@@ -128,7 +136,7 @@ class SpringBootWebfluxApirestApplicationTests {
 
 		webTestClient
 			.put()
-			.uri("/api/v2/productos/{id}", Collections.singletonMap("id", producto.getId()))
+			.uri(this.url + "/{id}", Collections.singletonMap("id", producto.getId()))
 			.contentType(MediaType.APPLICATION_JSON)
 			.accept(MediaType.APPLICATION_JSON)
 			.body(Mono.just(productoEditado), Producto.class)
@@ -157,7 +165,7 @@ class SpringBootWebfluxApirestApplicationTests {
 
 		webTestClient
 			.delete()
-			.uri("/api/v2/productos/{id}", Collections.singletonMap("id", producto.getId()))
+			.uri(this.url + "/{id}", Collections.singletonMap("id", producto.getId()))
 			.exchange()
 			.expectStatus()
 			.isNoContent()
@@ -166,7 +174,7 @@ class SpringBootWebfluxApirestApplicationTests {
 
 		webTestClient
 			.get()
-			.uri("/api/v2/productos/{id}", Collections.singletonMap("id", producto.getId()))
+			.uri(this.url + "/{id}", Collections.singletonMap("id", producto.getId()))
 			.exchange()
 			.expectStatus()
 			.isNotFound()
