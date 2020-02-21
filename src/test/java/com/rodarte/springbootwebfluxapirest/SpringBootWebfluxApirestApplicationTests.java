@@ -1,11 +1,14 @@
 package com.rodarte.springbootwebfluxapirest;
 
 import com.rodarte.springbootwebfluxapirest.models.documents.Producto;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
+
+import java.util.List;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class SpringBootWebfluxApirestApplicationTests {
@@ -26,7 +29,15 @@ class SpringBootWebfluxApirestApplicationTests {
 			.expectHeader()
 			.contentType(MediaType.APPLICATION_JSON)
 			.expectBodyList(Producto.class)
-			.hasSize(9);
+			.consumeWith(response -> {
+
+				List<Producto> productos = response.getResponseBody();
+				productos.forEach(producto -> System.out.println(producto.getNombre()));
+
+				Assertions.assertThat(productos.size() == 9).isTrue();
+
+			});
+			// .hasSize(9);
 
 	}
 
