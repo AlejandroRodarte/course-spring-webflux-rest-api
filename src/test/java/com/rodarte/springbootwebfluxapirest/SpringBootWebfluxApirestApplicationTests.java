@@ -150,4 +150,29 @@ class SpringBootWebfluxApirestApplicationTests {
 
 	}
 
+	@Test
+	public void eliminarTest() {
+
+		Producto producto = productoService.findByNombre("Mica Cómoda 5 Cajones").block();
+
+		webTestClient
+			.delete()
+			.uri("/api/v2/productos/{id}", Collections.singletonMap("id", producto.getId()))
+			.exchange()
+			.expectStatus()
+			.isNoContent()
+			.expectBody()
+			.isEmpty();
+
+		webTestClient
+			.get()
+			.uri("/api/v2/productos/{id}", Collections.singletonMap("id", producto.getId()))
+			.exchange()
+			.expectStatus()
+			.isNotFound()
+			.expectBody()
+			.isEmpty();
+
+	}
+
 }
