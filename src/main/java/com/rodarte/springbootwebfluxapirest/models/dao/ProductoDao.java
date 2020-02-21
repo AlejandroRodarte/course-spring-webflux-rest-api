@@ -1,7 +1,15 @@
 package com.rodarte.springbootwebfluxapirest.models.dao;
 
 import com.rodarte.springbootwebfluxapirest.models.documents.Producto;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
+import reactor.core.publisher.Mono;
 
 public interface ProductoDao extends ReactiveMongoRepository<Producto, String> {
+
+    Mono<Producto> findByNombre(String nombre);
+
+    @Query("{ 'nombre': ?0 }")
+    Mono<Producto> findByNombreQuery(String nombre);
+
 }
