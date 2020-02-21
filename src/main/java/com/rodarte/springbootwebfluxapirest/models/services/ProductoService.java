@@ -27,4 +27,6 @@ public interface ProductoService {
 
     Mono<Producto> findByNombre(String nombre);
 
+    Mono<Categoria> findCategoriaByNombre(String nombre);
+
 }

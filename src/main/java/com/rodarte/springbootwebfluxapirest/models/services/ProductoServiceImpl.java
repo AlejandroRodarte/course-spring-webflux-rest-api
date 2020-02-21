@@ -73,4 +73,9 @@ public class ProductoServiceImpl implements ProductoService {
         return productoDao.findByNombre(nombre);
     }
 
+    @Override
+    public Mono<Categoria> findCategoriaByNombre(String nombre) {
+        return categoriaDao.findByNombre(nombre);
+    }
+
 }

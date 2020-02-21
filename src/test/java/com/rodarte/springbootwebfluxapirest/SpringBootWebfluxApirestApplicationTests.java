@@ -1,5 +1,6 @@
 package com.rodarte.springbootwebfluxapirest;
 
+import com.rodarte.springbootwebfluxapirest.models.documents.Categoria;
 import com.rodarte.springbootwebfluxapirest.models.documents.Producto;
 import com.rodarte.springbootwebfluxapirest.models.services.ProductoService;
 import org.assertj.core.api.Assertions;
@@ -8,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Mono;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,7 +41,7 @@ class SpringBootWebfluxApirestApplicationTests {
 				List<Producto> productos = response.getResponseBody();
 				productos.forEach(producto -> System.out.println(producto.getNombre()));
 
-				Assertions.assertThat(productos.size() == 9).isTrue();
+				Assertions.assertThat(productos.size() > 0).isTrue();
 
 			});
 			// .hasSize(9);
@@ -75,6 +77,44 @@ class SpringBootWebfluxApirestApplicationTests {
 			.isNotEmpty()
 			.jsonPath("$.nombre")
 			.isEqualTo("TV Panasonic Pantalla LCD"); */
+
+	}
+
+	@Test
+	public void crearTest() {
+
+		Categoria categoria = productoService.findCategoriaByNombre("Muebles").block();
+
+		Producto producto = new Producto("Mesa comedor", 100.00, categoria);
+
+		webTestClient
+			.post()
+			.uri("/api/v2/productos")
+			.contentType(MediaType.APPLICATION_JSON)
+			.accept(MediaType.APPLICATION_JSON)
+			.body(Mono.just(producto), Producto.class)
+			.exchange()
+			.expectStatus()
+			.isCreated()
+			.expectHeader()
+			.contentType(MediaType.APPLICATION_JSON)
+			.expectBody(Producto.class)
+			.consumeWith(response -> {
+
+				Producto responseProducto = response.getResponseBody();
+
+				Assertions.assertThat(responseProducto.getId()).isNotEmpty();
+				Assertions.assertThat(responseProducto.getNombre()).isEqualTo("Mesa comedor");
+				Assertions.assertThat(responseProducto.getCategoria().getNombre()).isEqualTo("Muebles");
+
+			});
+			/* .expectBody()
+			.jsonPath("$.id")
+			.isNotEmpty()
+			.jsonPath("$.nombre")
+			.isEqualTo("Mesa comedor")
+			.jsonPath("$.categoria.nombre")
+			.isEqualTo("Muebles"); */
 
 	}
 
