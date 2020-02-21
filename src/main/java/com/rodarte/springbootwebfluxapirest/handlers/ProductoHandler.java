@@ -10,9 +10,13 @@ import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.codec.multipart.FormFieldPart;
 import org.springframework.http.codec.multipart.Part;
 import org.springframework.stereotype.Component;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.Errors;
+import org.springframework.validation.Validator;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
@@ -29,6 +33,9 @@ public class ProductoHandler {
 
     @Value("${config.uploads.path}")
     private String path;
+
+    @Autowired
+    private Validator validator;
 
     public Mono<ServerResponse> upload(ServerRequest serverRequest) {
 
@@ -169,19 +176,42 @@ public class ProductoHandler {
         return producto
                 .flatMap(nuevoProducto -> {
 
-                    if (nuevoProducto.getCreatedAt() == null) {
-                        nuevoProducto.setCreatedAt(new Date());
+                    Errors errors = new BeanPropertyBindingResult(nuevoProducto, Producto.class.getName());
+
+                    this.validator.validate(nuevoProducto, errors);
+
+                    if (errors.hasErrors()) {
+
+                        return Flux
+                                .fromIterable(errors.getFieldErrors())
+                                .map(fieldError -> "El campo " + fieldError.getField() + " " + fieldError.getDefaultMessage())
+                                .collectList()
+                                .flatMap(
+                                    errorList ->
+                                        ServerResponse
+                                            .badRequest()
+                                            .body(BodyInserters.fromValue(errorList))
+                                );
+
+                    } else {
+
+                        if (nuevoProducto.getCreatedAt() == null) {
+                            nuevoProducto.setCreatedAt(new Date());
+                        }
+
+                        return this
+                                .productoService
+                                .save(nuevoProducto)
+                                .flatMap(productoCreado ->
+                                    ServerResponse
+                                        .created(URI.create("/api/v2/productos/".concat(productoCreado.getId())))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .body(BodyInserters.fromValue(productoCreado))
+                                );
+
                     }
 
-                    return this.productoService.save(nuevoProducto);
-
-                })
-                .flatMap(productoCreado ->
-                    ServerResponse
-                        .created(URI.create("/api/v2/productos/".concat(productoCreado.getId())))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(BodyInserters.fromValue(productoCreado))
-                );
+                });
 
     }
 
